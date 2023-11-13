@@ -22,6 +22,7 @@ type (
 	Member struct {
 		UserID  int
 		GroupID int
+		Order   int
 	}
 )
 
@@ -35,15 +36,15 @@ var (
 	}
 
 	memberData = []*Member{
-		{UserID: 1, GroupID: 1},
-		{UserID: 1, GroupID: 2},
-		{UserID: 2, GroupID: 1},
-		{UserID: 3, GroupID: 2},
-		{UserID: 4, GroupID: 2},
-		{UserID: 4, GroupID: 3},
-		{UserID: 5, GroupID: 1},
-		{UserID: 5, GroupID: 2},
-		{UserID: 5, GroupID: 3},
+		{UserID: 1, GroupID: 1, Order: 1},
+		{UserID: 1, GroupID: 2, Order: 4},
+		{UserID: 2, GroupID: 1, Order: 2},
+		{UserID: 3, GroupID: 2, Order: 1},
+		{UserID: 4, GroupID: 2, Order: 3},
+		{UserID: 4, GroupID: 3, Order: 2},
+		{UserID: 5, GroupID: 1, Order: 3},
+		{UserID: 5, GroupID: 2, Order: 2},
+		{UserID: 5, GroupID: 3, Order: 1},
 	}
 )
 
@@ -114,7 +115,10 @@ func TestNewHasManyBatchFunc(t *testing.T) {
 		{"group 1", []int{1}, map[int][]*User{1: {userData[0], userData[1]}}, nil},
 		{"group 1,3", []int{1, 3}, map[int][]*User{1: {userData[0], userData[1]}, 3: {userData[4]}}, nil},
 		{"group 1,2,3", []int{1, 2, 3}, map[int][]*User{1: {userData[0], userData[1]}, 2: {userData[2], userData[3]}, 3: {userData[4]}}, nil},
-		{"group 1,2,3,10", []int{1, 2, 3}, map[int][]*User{1: {userData[0], userData[1]}, 2: {userData[2], userData[3]}, 3: {userData[4]}}, map[int]error{10: association.ErrNotFound}},
+		{"group 1,2,3,10", []int{1, 2, 3}, map[int][]*User{
+			1: {userData[0], userData[1]},
+			2: {userData[2], userData[3]},
+			3: {userData[4]}}, map[int]error{10: association.ErrNotFound}},
 	}
 
 	for _, tc := range testCases {
@@ -162,8 +166,14 @@ func TestNewManyToManyBatchFunc(t *testing.T) {
 		{"empty", []int{}, map[int][]*User{}, nil},
 		{"group 1", []int{1}, map[int][]*User{1: {userData[0], userData[1], userData[4]}}, nil},
 		{"group 1,3", []int{1, 3}, map[int][]*User{1: {userData[0], userData[1], userData[4]}, 3: {userData[3], userData[4]}}, nil},
-		{"group 1,2,3", []int{1, 2, 3}, map[int][]*User{1: {userData[0], userData[1], userData[4]}, 2: {userData[0], userData[2], userData[3], userData[4]}, 3: {userData[3], userData[4]}}, nil},
-		{"group 1,2,3,10", []int{1, 2, 3}, map[int][]*User{1: {userData[0], userData[1], userData[4]}, 2: {userData[0], userData[2], userData[3], userData[4]}, 3: {userData[3], userData[4]}}, map[int]error{10: association.ErrNotFound}},
+		{"group 1,2,3", []int{1, 2, 3}, map[int][]*User{
+			1: {userData[0], userData[1], userData[4]},
+			2: {userData[0], userData[2], userData[3], userData[4]},
+			3: {userData[3], userData[4]}}, nil},
+		{"group 1,2,3,10", []int{1, 2, 3}, map[int][]*User{
+			1: {userData[0], userData[1], userData[4]},
+			2: {userData[0], userData[2], userData[3], userData[4]},
+			3: {userData[3], userData[4]}}, map[int]error{10: association.ErrNotFound}},
 	}
 
 	for _, tc := range testCases {
@@ -187,9 +197,13 @@ func TestNewManyToManyBatchFuncWithSortFunc(t *testing.T) {
 		func(v *User) int {
 			return v.ID
 		},
-		association.WithSortFunc(func(users []*User) {
-			sort.SliceStable(users, func(i, j int) bool {
-				return users[i].ID > users[j].ID
+		association.WithSortFunc(func(members []*Member) {
+			sort.SliceStable(members, func(i, j int) bool {
+				if members[i].Order == members[j].Order {
+					return members[i].UserID < members[j].UserID
+				}
+
+				return members[i].Order < members[j].Order
 			})
 		}),
 	)
@@ -200,7 +214,10 @@ func TestNewManyToManyBatchFuncWithSortFunc(t *testing.T) {
 		want map[int][]*User
 		errs map[int]error
 	}{
-		{"group 1,2,3,10", []int{1, 2, 3}, map[int][]*User{1: {userData[4], userData[1], userData[0]}, 2: {userData[4], userData[3], userData[2], userData[0]}, 3: {userData[4], userData[3]}}, map[int]error{10: association.ErrNotFound}},
+		{"group 1,2,3,10", []int{1, 2, 3}, map[int][]*User{
+			1: {userData[0], userData[1], userData[4]},
+			2: {userData[2], userData[4], userData[3], userData[0]},
+			3: {userData[4], userData[3]}}, map[int]error{10: association.ErrNotFound}},
 	}
 
 	for _, tc := range testCases {

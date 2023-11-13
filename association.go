@@ -75,9 +75,9 @@ func NewManyToManyBatchFunc[K comparable, A any, V any, S []V](
 	parentKeyFn KeyFunc[K, A],
 	childKeyFn KeyFunc[K, A],
 	keyFn KeyFunc[K, V],
-	optionFns ...BatchOption[V],
+	optionFns ...BatchOption[A],
 ) dataloader.BatchFunc[K, S] {
-	opts := BatchOptions[V]{}
+	opts := BatchOptions[A]{}
 	for _, optionFn := range optionFns {
 		optionFn(&opts)
 	}
@@ -86,6 +86,10 @@ func NewManyToManyBatchFunc[K comparable, A any, V any, S []V](
 		associations, err := associationQueryFn(ctx, keys)
 		if err != nil {
 			return newErrorResults[S](err, len(keys))
+		}
+
+		if opts.sortFn != nil {
+			opts.sortFn(associations)
 		}
 
 		childKeys := make([]K, len(associations))
@@ -116,12 +120,6 @@ func NewManyToManyBatchFunc[K comparable, A any, V any, S []V](
 			val, ok := values[childKey]
 			if ok {
 				data[parentKey] = append(data[parentKey], val)
-			}
-		}
-
-		if opts.sortFn != nil {
-			for _, v := range data {
-				opts.sortFn(v)
 			}
 		}
 
