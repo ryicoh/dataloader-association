@@ -128,6 +128,40 @@ func TestNewHasManyBatchFunc(t *testing.T) {
 	}
 }
 
+func TestNewHasManyBatchFuncWithSortFunc(t *testing.T) {
+	batchFn := association.NewHasManyBatchFunc[int, *User](
+		getUsersByGroupID, func(v *User) int {
+			return v.GroupID
+		},
+		association.WithSortFunc(func(users []*User) {
+			sort.SliceStable(users, func(i, j int) bool {
+				return users[i].ID > users[j].ID
+			})
+		}),
+	)
+
+	testCases := []struct {
+		name string
+		keys []int
+		want map[int][]*User
+	}{
+		{"empty", []int{}, map[int][]*User{}},
+		{"group 1,2,3,10", []int{1, 2, 3}, map[int][]*User{
+			1:  {userData[1], userData[0]},
+			2:  {userData[3], userData[2]},
+			3:  {userData[4]},
+			10: {},
+		}},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			runTestCase(t, batchFn, tc.keys, tc.want)
+		})
+	}
+}
+
 var getMembersByGroupID = func(ctx context.Context, keys []int) ([]*Member, error) {
 	var results []*Member
 	for _, member := range memberData {
