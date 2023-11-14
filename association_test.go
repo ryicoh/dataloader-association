@@ -22,6 +22,13 @@ type (
 		UserID  int
 		GroupID int
 		Order   int
+		Role    string
+	}
+
+	MemberInfo struct {
+		UserID int
+		Name   string
+		Role   string
 	}
 )
 
@@ -35,15 +42,15 @@ var (
 	}
 
 	memberData = []*Member{
-		{UserID: 1, GroupID: 1, Order: 1},
-		{UserID: 1, GroupID: 2, Order: 4},
-		{UserID: 2, GroupID: 1, Order: 2},
-		{UserID: 3, GroupID: 2, Order: 1},
-		{UserID: 4, GroupID: 2, Order: 3},
-		{UserID: 4, GroupID: 3, Order: 2},
-		{UserID: 5, GroupID: 1, Order: 3},
-		{UserID: 5, GroupID: 2, Order: 2},
-		{UserID: 5, GroupID: 3, Order: 1},
+		{UserID: 1, GroupID: 1, Order: 1, Role: "Admin"},
+		{UserID: 1, GroupID: 2, Order: 4, Role: "Admin"},
+		{UserID: 2, GroupID: 1, Order: 2, Role: ""},
+		{UserID: 3, GroupID: 2, Order: 1, Role: ""},
+		{UserID: 4, GroupID: 2, Order: 3, Role: ""},
+		{UserID: 4, GroupID: 3, Order: 2, Role: ""},
+		{UserID: 5, GroupID: 1, Order: 3, Role: ""},
+		{UserID: 5, GroupID: 2, Order: 2, Role: ""},
+		{UserID: 5, GroupID: 3, Order: 1, Role: ""},
 	}
 )
 
@@ -128,12 +135,12 @@ func TestNewHasManyBatchFunc(t *testing.T) {
 	}
 }
 
-func TestNewHasManyBatchFuncWithSortFunc(t *testing.T) {
+func TestNewHasManyBatchFuncWithSort(t *testing.T) {
 	batchFn := association.NewHasManyBatchFunc[int, *User](
 		getUsersByGroupID, func(v *User) int {
 			return v.GroupID
 		},
-		association.WithSortFunc(func(users []*User) {
+		association.WithSort(func(users []*User) {
 			sort.SliceStable(users, func(i, j int) bool {
 				return users[i].ID > users[j].ID
 			})
@@ -176,7 +183,7 @@ var getMembersByGroupID = func(ctx context.Context, keys []int) ([]*Member, erro
 }
 
 func TestNewManyToManyBatchFunc(t *testing.T) {
-	batchFn := association.NewManyToManyBatchFunc[int, *Member, *User](
+	batchFn := association.NewManyToManyBatchFunc[int, *Member, *User, *User](
 		getMembersByGroupID,
 		getUsersByUserID,
 		func(v *Member) int {
@@ -187,6 +194,9 @@ func TestNewManyToManyBatchFunc(t *testing.T) {
 		},
 		func(v *User) int {
 			return v.ID
+		},
+		func(_ *Member, u *User) *User {
+			return u
 		},
 	)
 
@@ -218,7 +228,61 @@ func TestNewManyToManyBatchFunc(t *testing.T) {
 	}
 }
 
-func TestNewManyToManyBatchFuncWithSortFunc(t *testing.T) {
+func TestNewManyToManyBatchFunc2(t *testing.T) {
+	batchFn := association.NewManyToManyBatchFunc[int, *Member, *User, *MemberInfo](
+		getMembersByGroupID,
+		getUsersByUserID,
+		func(v *Member) int {
+			return v.GroupID
+		},
+		func(v *Member) int {
+			return v.UserID
+		},
+		func(v *User) int {
+			return v.ID
+		},
+		func(m *Member, u *User) *MemberInfo {
+			return &MemberInfo{
+				UserID: u.ID,
+				Name:   u.Name,
+				Role:   m.Role,
+			}
+		},
+	)
+
+	testCases := []struct {
+		name string
+		keys []int
+		want map[int][]*MemberInfo
+	}{
+		{"group 1,2,3", []int{1, 2, 3}, map[int][]*MemberInfo{
+			1: {
+				&MemberInfo{UserID: userData[0].ID, Name: userData[0].Name, Role: "Admin"},
+				&MemberInfo{UserID: userData[1].ID, Name: userData[1].Name},
+				&MemberInfo{UserID: userData[4].ID, Name: userData[4].Name},
+			},
+			2: {
+				&MemberInfo{UserID: userData[0].ID, Name: userData[0].Name, Role: "Admin"},
+				&MemberInfo{UserID: userData[2].ID, Name: userData[2].Name},
+				&MemberInfo{UserID: userData[3].ID, Name: userData[3].Name},
+				&MemberInfo{UserID: userData[4].ID, Name: userData[4].Name},
+			},
+			3: {
+				&MemberInfo{UserID: userData[3].ID, Name: userData[3].Name},
+				&MemberInfo{UserID: userData[4].ID, Name: userData[4].Name},
+			},
+		}},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			runTestCase(t, batchFn, tc.keys, tc.want)
+		})
+	}
+}
+
+func TestNewManyToManyBatchFuncWithSort(t *testing.T) {
 	batchFn := association.NewManyToManyBatchFunc[int, *Member, *User](
 		getMembersByGroupID,
 		getUsersByUserID,
@@ -231,7 +295,10 @@ func TestNewManyToManyBatchFuncWithSortFunc(t *testing.T) {
 		func(v *User) int {
 			return v.ID
 		},
-		association.WithSortFunc(func(members []*Member) {
+		func(_ *Member, u *User) *User {
+			return u
+		},
+		association.WithSort(func(members []*Member) {
 			sort.SliceStable(members, func(i, j int) bool {
 				if members[i].Order == members[j].Order {
 					return members[i].UserID < members[j].UserID

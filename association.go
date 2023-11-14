@@ -65,12 +65,13 @@ func NewHasManyBatchFunc[K comparable, V any, S []V](queryFn QueryFunc[K, V], ke
 	}
 }
 
-func NewManyToManyBatchFunc[K comparable, A any, V any, S []V](
+func NewManyToManyBatchFunc[K comparable, A, V, R any, S []R](
 	associationQueryFn QueryFunc[K, A],
 	queryFn QueryFunc[K, V],
 	parentKeyFn KeyFunc[K, A],
 	childKeyFn KeyFunc[K, A],
 	keyFn KeyFunc[K, V],
+	combineFn func(A, V) R,
 	optionFns ...BatchOption[A],
 ) dataloader.BatchFunc[K, S] {
 	opts := BatchOptions[A]{}
@@ -115,7 +116,7 @@ func NewManyToManyBatchFunc[K comparable, A any, V any, S []V](
 
 			val, ok := values[childKey]
 			if ok {
-				data[parentKey] = append(data[parentKey], val)
+				data[parentKey] = append(data[parentKey], combineFn(ass, val))
 			}
 		}
 
@@ -123,7 +124,7 @@ func NewManyToManyBatchFunc[K comparable, A any, V any, S []V](
 	}
 }
 
-func WithSortFunc[V any](sortFn func([]V)) BatchOption[V] {
+func WithSort[V any](sortFn func([]V)) BatchOption[V] {
 	return func(opts *BatchOptions[V]) {
 		opts.sortFn = sortFn
 	}
