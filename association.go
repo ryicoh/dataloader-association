@@ -33,7 +33,7 @@ func NewHasOneBatchFunc[K comparable, V any](queryFn QueryFunc[K, V], keyFn KeyF
 			data[key] = v
 		}
 
-		return newResults(keys, data)
+		return newResults(keys, data, false)
 	}
 }
 
@@ -65,7 +65,7 @@ func NewHasManyBatchFunc[K comparable, V any, S []V](queryFn QueryFunc[K, V], ke
 			}
 		}
 
-		return newResults(keys, data)
+		return newResults(keys, data, true)
 	}
 }
 
@@ -123,7 +123,7 @@ func NewManyToManyBatchFunc[K comparable, A any, V any, S []V](
 			}
 		}
 
-		return newResults(keys, data)
+		return newResults(keys, data, true)
 	}
 }
 
@@ -133,13 +133,16 @@ func WithSortFunc[V any](sortFn func([]V)) BatchOption[V] {
 	}
 }
 
-func newResults[K comparable, V any](keys []K, data map[K]V) []*dataloader.Result[V] {
+func newResults[K comparable, V any](keys []K, data map[K]V, isSlice bool) []*dataloader.Result[V] {
 	results := make([]*dataloader.Result[V], len(keys))
 	for i, key := range keys {
 		results[i] = new(dataloader.Result[V])
 		v, ok := data[key]
 		if ok {
 			results[i].Data = v
+		} else if isSlice {
+			var data V
+			results[i].Data = data
 		} else {
 			results[i].Error = ErrNotFound
 		}

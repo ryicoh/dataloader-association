@@ -109,22 +109,23 @@ func TestNewHasManyBatchFunc(t *testing.T) {
 		name string
 		keys []int
 		want map[int][]*User
-		errs map[int]error
 	}{
-		{"empty", []int{}, map[int][]*User{}, nil},
-		{"group 1", []int{1}, map[int][]*User{1: {userData[0], userData[1]}}, nil},
-		{"group 1,3", []int{1, 3}, map[int][]*User{1: {userData[0], userData[1]}, 3: {userData[4]}}, nil},
-		{"group 1,2,3", []int{1, 2, 3}, map[int][]*User{1: {userData[0], userData[1]}, 2: {userData[2], userData[3]}, 3: {userData[4]}}, nil},
+		{"empty", []int{}, map[int][]*User{}},
+		{"group 1", []int{1}, map[int][]*User{1: {userData[0], userData[1]}}},
+		{"group 1,3", []int{1, 3}, map[int][]*User{1: {userData[0], userData[1]}, 3: {userData[4]}}},
+		{"group 1,2,3", []int{1, 2, 3}, map[int][]*User{1: {userData[0], userData[1]}, 2: {userData[2], userData[3]}, 3: {userData[4]}}},
 		{"group 1,2,3,10", []int{1, 2, 3}, map[int][]*User{
-			1: {userData[0], userData[1]},
-			2: {userData[2], userData[3]},
-			3: {userData[4]}}, map[int]error{10: association.ErrNotFound}},
+			1:  {userData[0], userData[1]},
+			2:  {userData[2], userData[3]},
+			3:  {userData[4]},
+			10: {},
+		}},
 	}
 
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			runTestCase(t, batchFn, tc.keys, tc.want, tc.errs)
+			runTestCase(t, batchFn, tc.keys, tc.want, nil)
 		})
 	}
 }
@@ -161,19 +162,20 @@ func TestNewManyToManyBatchFunc(t *testing.T) {
 		name string
 		keys []int
 		want map[int][]*User
-		errs map[int]error
 	}{
-		{"empty", []int{}, map[int][]*User{}, nil},
-		{"group 1", []int{1}, map[int][]*User{1: {userData[0], userData[1], userData[4]}}, nil},
-		{"group 1,3", []int{1, 3}, map[int][]*User{1: {userData[0], userData[1], userData[4]}, 3: {userData[3], userData[4]}}, nil},
+		{"empty", []int{}, map[int][]*User{}},
+		{"group 1", []int{1}, map[int][]*User{1: {userData[0], userData[1], userData[4]}}},
+		{"group 1,3", []int{1, 3}, map[int][]*User{1: {userData[0], userData[1], userData[4]}, 3: {userData[3], userData[4]}}},
 		{"group 1,2,3", []int{1, 2, 3}, map[int][]*User{
 			1: {userData[0], userData[1], userData[4]},
 			2: {userData[0], userData[2], userData[3], userData[4]},
-			3: {userData[3], userData[4]}}, nil},
+			3: {userData[3], userData[4]}}},
 		{"group 1,2,3,10", []int{1, 2, 3}, map[int][]*User{
-			1: {userData[0], userData[1], userData[4]},
-			2: {userData[0], userData[2], userData[3], userData[4]},
-			3: {userData[3], userData[4]}}, map[int]error{10: association.ErrNotFound}},
+			1:  {userData[0], userData[1], userData[4]},
+			2:  {userData[0], userData[2], userData[3], userData[4]},
+			3:  {userData[3], userData[4]},
+			10: {},
+		}},
 	}
 
 	for _, tc := range testCases {
@@ -212,12 +214,13 @@ func TestNewManyToManyBatchFuncWithSortFunc(t *testing.T) {
 		name string
 		keys []int
 		want map[int][]*User
-		errs map[int]error
 	}{
 		{"group 1,2,3,10", []int{1, 2, 3}, map[int][]*User{
-			1: {userData[0], userData[1], userData[4]},
-			2: {userData[2], userData[4], userData[3], userData[0]},
-			3: {userData[4], userData[3]}}, map[int]error{10: association.ErrNotFound}},
+			1:  {userData[0], userData[1], userData[4]},
+			2:  {userData[2], userData[4], userData[3], userData[0]},
+			3:  {userData[4], userData[3]},
+			10: {},
+		}},
 	}
 
 	for _, tc := range testCases {
