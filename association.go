@@ -2,12 +2,9 @@ package association
 
 import (
 	"context"
-	"errors"
 
 	dataloader "github.com/graph-gophers/dataloader/v7"
 )
-
-var ErrNotFound = errors.New("not found")
 
 type (
 	QueryFunc[K comparable, V any] func(ctx context.Context, keys []K) ([]V, error)
@@ -140,13 +137,9 @@ func newResults[K comparable, V any](keys []K, data map[K]V, isSlice bool) []*da
 		v, ok := data[key]
 		if ok {
 			results[i].Data = v
-		} else if isSlice {
-			var data V
-			results[i].Data = data
-		} else {
-			results[i].Error = ErrNotFound
 		}
 	}
+
 	return results
 }
 

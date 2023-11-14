@@ -2,7 +2,6 @@ package association_test
 
 import (
 	"context"
-	"errors"
 	"reflect"
 	"sort"
 	"sync"
@@ -70,19 +69,18 @@ func TestNewHasOneBatchFunc(t *testing.T) {
 		name string
 		keys []int
 		want map[int]*User
-		errs map[int]error
 	}{
-		{"empty", []int{}, map[int]*User{}, nil},
-		{"user 1", []int{1}, map[int]*User{1: userData[0]}, nil},
-		{"user 1,3", []int{1, 3}, map[int]*User{1: userData[0], 3: userData[2]}, nil},
-		{"user 2", []int{2}, map[int]*User{2: userData[1]}, nil},
-		{"user 10", []int{10}, map[int]*User{}, map[int]error{10: association.ErrNotFound}},
+		{"empty", []int{}, map[int]*User{}},
+		{"user 1", []int{1}, map[int]*User{1: userData[0]}},
+		{"user 1,3", []int{1, 3}, map[int]*User{1: userData[0], 3: userData[2]}},
+		{"user 2", []int{2}, map[int]*User{2: userData[1]}},
+		{"user 10", []int{10}, map[int]*User{}},
 	}
 
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			runTestCase(t, batchFn, tc.keys, tc.want, tc.errs)
+			runTestCase(t, batchFn, tc.keys, tc.want)
 		})
 	}
 }
@@ -125,7 +123,7 @@ func TestNewHasManyBatchFunc(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			runTestCase(t, batchFn, tc.keys, tc.want, nil)
+			runTestCase(t, batchFn, tc.keys, tc.want)
 		})
 	}
 }
@@ -181,7 +179,7 @@ func TestNewManyToManyBatchFunc(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			runTestCase(t, batchFn, tc.keys, tc.want, nil)
+			runTestCase(t, batchFn, tc.keys, tc.want)
 		})
 	}
 }
@@ -226,7 +224,7 @@ func TestNewManyToManyBatchFuncWithSortFunc(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			runTestCase(t, batchFn, tc.keys, tc.want, nil)
+			runTestCase(t, batchFn, tc.keys, tc.want)
 		})
 	}
 }
@@ -236,7 +234,6 @@ func runTestCase[K comparable, V any](
 	batchFn dataloader.BatchFunc[K, V],
 	keys []K,
 	want map[K]V,
-	errs map[K]error,
 ) {
 	t.Helper()
 
@@ -250,7 +247,7 @@ func runTestCase[K comparable, V any](
 		go func() {
 			defer wg.Done()
 			got, err := loader(ctx, key)
-			if !errors.Is(err, errs[key]) {
+			if err != nil {
 				t.Errorf("unexpected error: %v", err)
 			}
 
